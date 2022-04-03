@@ -7,6 +7,7 @@ from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 from loginfo import loginfo
+from loginfo import book_info
 import time
 import schedule
 import datetime
@@ -55,10 +56,10 @@ def customized_set_url(court, month, date, hour24):
 def set_url(court):
     #today = datetime.datetime(2022, 4, 3)
     today         = datetime.datetime.now()
-    date_nextweek = today + datetime.timedelta(days=7)
+    date_nextweek = today + datetime.timedelta(days=8)
     month         = date_nextweek.strftime("%m")
     date          = date_nextweek.strftime("%d")
-    week_day      = (int)(today.strftime("%w"))
+    week_day      = (int)(date_nextweek.strftime("%w"))
     # book courts of 8pm during Monday to Friday; otherwise 10am
     hour24        = 20 if 0 < week_day and week_day < 6 else 10
     hour12        = hour24 % 12
@@ -148,17 +149,19 @@ parser = argparse.ArgumentParser(description='Process login info')
 parser.add_argument('--name', type=str, required=True, help='The last name of the account')
 args = parser.parse_args()
 
-email = loginfo[args.name][0]
-password = loginfo[args.name][1]
-driver = get_driver()
-
-#assemble the booking url for specific court and time
-court = 17
-#court_url1 is for the first hour, court_url2 is for the second hour
+name = args.name
+email = loginfo[name][0]
+password = loginfo[name][1]
+court = book_info[name]
 court_url1, court_url2, sched_hour = set_url(court_dict[court])
-#court_url1, court_url2, sched_hour = customized_set_url(court_dict[17], '03', '30', 21)
 #print(court_url1)
 #print(court_url2)
+#exit()
+
+driver = get_driver()
+#assemble the booking url for specific court and time
+#court_url1 is for the first hour, court_url2 is for the second hour
+#court_url1, court_url2, sched_hour = customized_set_url(court_dict[17], '03', '30', 21)
 #court_url1, court_url2, sched_hour = customized_set_url(court_dict[17], '03', '30', 22)
 #print(court_url1)
 #print(court_url2)
@@ -171,15 +174,18 @@ court_url1, court_url2, sched_hour = set_url(court_dict[court])
 #exit()
 
 ##schedule the task for first hour
-sched_time1 = "0{}:59:30" if sched_hour <= 10 else "{}:59:30"
-sched_time2 = "0{}:00:00" if sched_hour < 10 else "{}:00:00"
-print(sched_time1.format(sched_hour-1))
-schedule.every().day.at(sched_time1.format(sched_hour-1)).do(login)
-schedule.every().day.at(sched_time2.format(sched_hour)).do(book_court, court_url1)
+sched_time1 = "23:59:30"
+sched_time2 = "00:00:00"
+sched_time3 = "00:00:30"
+#sched_time1 = "0{}:59:30" if sched_hour <= 10 else "{}:59:30"
+#sched_time2 = "0{}:00:00" if sched_hour < 10 else "{}:00:00"
+schedule.every().day.at(sched_time1).do(login)
+schedule.every().day.at(sched_time2).do(book_court, court_url1)
+schedule.every().day.at(sched_time3).do(book_court, court_url2)
 #
 ##schedule the task for second hour
-schedule.every().day.at(sched_time2.format(sched_hour)).do(login)
-schedule.every().day.at(sched_time2.format(sched_hour+1)).do(book_court, court_url2)
+#schedule.every().day.at(sched_time2.format(sched_hour)).do(login)
+#schedule.every().day.at(sched_time2.format(sched_hour+1)).do(book_court, court_url2)
 
 #schedule.every().day.do(login)
 #schedule.every().day.do(book_court, court_url1)
@@ -191,7 +197,7 @@ wait_time = schedule.idle_seconds() + 3700
 print("Will execute the task within %d seconds" % wait_time)
 i = 0
 while i < wait_time:
-    print("Waited for %d seconds" % i)
+    #print("Waited for %d seconds" % i)
     schedule.run_pending()
     time.sleep(1)
     i = i+1
