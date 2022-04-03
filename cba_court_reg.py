@@ -6,25 +6,23 @@ from selenium.webdriver import ActionChains
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
+from loginfo import loginfo
 import time
 import schedule
 import datetime
+import argparse
 
 driver_path = "/Users/WeifanWang/workspace/cba_court_reg/chromedriver"
 url = "https://clients.mindbodyonline.com/ASP/su1.asp?studioid=217228&tg=&vt=&lvl=&stype=&view=&trn=0&page=&catid=&prodid=&date=3%2f24%2f2022&classid=0&prodGroupId=&sSU=&optForwardingLink=&qParam=&justloggedin=&nLgIn=&pMode=0&loc=1"
 court_dict = {11:54, 12:69, 13:56, 14:71, 15:72, 16:73, 17:50, 18:80, 19:83, 20:85}
 court_url_base = "https://clients.mindbodyonline.com/asp/appt_con.asp?loc=1&tgid=5&trnid=1000000{}&rtrnid=&date={}/{}/2022&mask=False&STime={}:00:00%20{}&ETime={}:00:00%20{}"
-email = "vic957b@163.com"
-password = "weifan12345"
-email_he = "ruxiaoyi666@gmail.com"
-password_he = "Heyuguang@123"
 
 def get_driver():
     #Initialize webdriver object
     options = webdriver.ChromeOptions()
-    options.add_argument('--headless')
     options.add_argument('--window-size=1920,1080')
     #Set user agent to avoid being detected headless mode: in headless, it uses 'HeadlessChrome//99.0.4844.83'
+    options.add_argument('--headless')
     user_agent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.4844.83 Safari/537.36'
     options.add_argument(f'user-agent={user_agent}')
     #driver = webdriver.Chrome(options=options, executable_path=driver_path)
@@ -110,6 +108,13 @@ def book_court(court_url):
         #Switch to the new window and open new URL
         driver.switch_to.window(driver.window_handles[1])
 
+
+parser = argparse.ArgumentParser(description='Process login info')
+parser.add_argument('--name', type=str, required=True, help='The last name of the account')
+args = parser.parse_args()
+
+email = loginfo[args.name][0]
+password = loginfo[args.name][1]
 driver = get_driver()
 
 #assemble the booking url for specific court and time
@@ -118,12 +123,12 @@ court = 17
 court_url1, court_url2, sched_hour = set_url(court_dict[court])
 
 ##schedule the task for first hour
-sched_time1 = "0{}:59:30" if sched_hour < 10 else "{}:59:30"
+sched_time1 = "0{}:59:30" if sched_hour <= 10 else "{}:59:30"
 sched_time2 = "0{}:00:00" if sched_hour < 10 else "{}:00:00"
 schedule.every().day.at(sched_time1.format(sched_hour-1)).do(login)
 schedule.every().day.at(sched_time2.format(sched_hour)).do(book_court, court_url1)
 ##schedule the task for second hour
-schedule.every().day.at(sched_time1.format(sched_hour)).do(login)
+schedule.every().day.at(sched_time2.format(sched_hour)).do(login)
 schedule.every().day.at(sched_time2.format(sched_hour+1)).do(book_court, court_url2)
 
 wait_time = schedule.idle_seconds() + 3700
