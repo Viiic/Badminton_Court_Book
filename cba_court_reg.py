@@ -23,9 +23,10 @@ def get_driver():
     options = webdriver.ChromeOptions()
     options.add_argument('--window-size=1920,1080')
     #Set user agent to avoid being detected headless mode: in headless, it uses 'HeadlessChrome//99.0.4844.83'
-    options.add_argument('--headless')
-    user_agent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.4844.83 Safari/537.36'
-    options.add_argument(f'user-agent={user_agent}')
+    if not args.d:
+        options.add_argument('--headless')
+        user_agent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.4844.83 Safari/537.36'
+        options.add_argument(f'user-agent={user_agent}')
     #driver = webdriver.Chrome(options=options, executable_path=driver_path)
     service = Service("/Users/WeifanWang/workspace/cba_court_reg/chromedriver")
     driver = webdriver.Chrome(service=service, options=options)
@@ -147,6 +148,7 @@ def book_court(court_url):
 
 parser = argparse.ArgumentParser(description='Process login info')
 parser.add_argument('--name', type=str, required=True, help='The last name of the account')
+parser.add_argument('-d', action='store_true', help='Debug mode')
 args = parser.parse_args()
 
 name = args.name
@@ -154,8 +156,9 @@ email = loginfo[name][0]
 password = loginfo[name][1]
 court = book_info[name]
 court_url1, court_url2, sched_hour = set_url(court_dict[court])
-#print(court_url1)
-#print(court_url2)
+if args.d:
+    print(court_url1)
+    print(court_url2)
 #exit()
 
 driver = get_driver()
@@ -190,8 +193,9 @@ schedule.every().day.at(sched_time3).do(book_court, court_url2)
 #schedule.every().day.do(login)
 #schedule.every().day.do(book_court, court_url1)
 #schedule.every().day.at("12:09:20").do(book_court, court_url2)
-#schedule.run_all()
-#exit()
+if args.d:
+    schedule.run_all()
+    exit()
 
 wait_time = schedule.idle_seconds() + 3700
 print("Will execute the task within %d seconds" % wait_time)
