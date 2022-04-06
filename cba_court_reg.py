@@ -105,33 +105,52 @@ def login():
     appt_field.click()
 
 def book_court(court_url):
+    #Open a new tab
+    driver.execute_script("window.open('');")
+    #Switch to the new window and open new URL
+    driver.switch_to.window(driver.window_handles[1])
+
     try:
-        #print("Switching to booking page")
+        print("Starting to booking")
         driver.get(court_url)
         book_appt = driver.find_element(By.ID, "apptBtn")
-        #print("Clicking book appt button")
+        print("Clicking book appt button")
         book_appt.click()
-        driver.get_screenshot_as_file("screenshot1.png")
         checkout = driver.find_element(By.ID, "CheckoutButton")
-        #print("Clicking checkout button")
+        print("Clicking checkout button")
         checkout.click()
-        driver.get_screenshot_as_file("screenshot2.png")
         place_order = driver.find_element(By.ID, "buybtn")
-        #print("Clicking place order button")
-        #place_order.click()
-    except Exception as e:
-        print("Failed to book. Here's the link:{}".format(court_url))
-        print(e)
+        print("Clicking place order button")
+        place_order.click()
+    except Exception as e1:
+        #Sometimes, will jump to 'court reservation member' page after clicking 'Book appointment' button
+        try:
+            court_rsv_member = driver.find_element(By.NAME, "Court Reservation Member ")
+            print("Clicking court reservation button")
+            court_rsv_member.click()
+            checkout = driver.find_element(By.ID, "CheckoutButton")
+            print("Clicking checkout button-1")
+            checkout.click()
+            place_order = driver.find_element(By.ID, "buybtn")
+            print("Clicking place order button-2")
+            place_order.click()
+        except Exception as e2:
+            print ("Didn't find the 'Court Reservation Member' option. Check if already booked")
+
+        #Sometimes, directly booking succeed after clicking 'Book appointment' button
+        try:
+            booked = driver.find_element(By.ID, "notifyBooking")
+            print("Find notifybooking. Probably booking succeed")
+        except Exception as e3:
+            print("Didn't find the 'check out' button and also the notifying popup window. Probably booking failed")
+            print("Save screenshot for debug")
+            splitted_url = court_url.split(':')
+            stime = splitted_url[1].split('=')[-1]
+            etime = splitted_url[3].split('=')[-1]
+            driver.get_screenshot_as_file("screenshot_{}_{}.png".format(stime, etime))
+            raise Exception("Booking failed")
     finally:
         print(datetime.datetime.now().strftime("%Y-%m-%d:%H:%M:%S:%f"))
-        splitted_url = court_url.split(':')
-        stime = splitted_url[1].split('=')[-1]
-        etime = splitted_url[3].split('=')[-1]
-        driver.get_screenshot_as_file("screenshot_{}_{}.png".format(stime, etime))
-        #Open a new tab
-        driver.execute_script("window.open('');")
-        #Switch to the new window and open new URL
-        driver.switch_to.window(driver.window_handles[1])
 
 
 parser = argparse.ArgumentParser(description='Process login info')
@@ -156,24 +175,10 @@ if args.d:
 driver = get_driver()
 
 ##schedule the task for first hour
-sched_time1 = "23:59:30"
-sched_time2 = "00:00:00"
-sched_time3 = "00:00:30"
-schedule.every().day.at(sched_time1).do(login)
-schedule.every().day.at(sched_time2).do(book_court, court_url1)
-schedule.every().day.at(sched_time3).do(book_court, court_url2)
-
-if args.d:
-    schedule.run_all()
-    exit()
-
-wait_time = schedule.idle_seconds() + 3700
-print("Will execute the task within %d seconds" % wait_time)
-i = 0
-while i < wait_time:
-    #print("Waited for %d seconds" % i)
-    schedule.run_pending()
-    time.sleep(1)
-    i = i+1
-
-#driver.quit()
+schedule.every().day.do(login).run()
+schedule.every().day.do(book_court, court_url1).run()
+print("Clicking appointment tab")
+appt_field = driver.find_element(By.ID, "tabA9")
+appt_field.click()
+time.sleep(3)
+schedule.every().day.do(book_court, court_url2).run()
