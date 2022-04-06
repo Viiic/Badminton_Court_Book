@@ -27,10 +27,8 @@ def get_driver():
         options.add_argument('--headless')
         user_agent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.4844.83 Safari/537.36'
         options.add_argument(f'user-agent={user_agent}')
-    #driver = webdriver.Chrome(options=options, executable_path=driver_path)
     service = Service("/Users/WeifanWang/workspace/cba_court_reg/chromedriver")
     driver = webdriver.Chrome(service=service, options=options)
-    #driver = webdriver.Chrome(executable_path = driver_path)
     return driver
 
 def get_url(court, month, date, shour, ehour, start_am_pm, end_am_pm):
@@ -43,49 +41,44 @@ def customized_set_url(court, month, date, hour24):
     start_am_pm   = "am" if hour24 < 12 else "pm"
     end_am_pm     = "am" if ((hour24+1)%24) < 12 else "pm"
     court_url1    = get_url(court, month, date, shour, ehour, start_am_pm, end_am_pm)
-    #court_url1 = court_url_base.format(court, month, date, hour24%24, start_am_pm, (hour24+1)%24, end_am_pm)
 
     shour         = ehour
     ehour         = (shour+1) if (shour+1) <= 12 else ((shour+1)%12)
     start_am_pm   = "am" if ((hour24+1)%24) < 12 else "pm"
     end_am_pm     = "am" if ((hour24+2)%24) < 12 else "pm"
     court_url2    = get_url(court, month, date, shour, ehour, start_am_pm, end_am_pm)
-    #court_url2 = court_url_base.format(court, month, date, (hour24+1)%24, start_am_pm, (hour24+2)%24, end_am_pm)
     print("month: {}, date: {}, hour: {}, start_am_pm: {}".format(month, date, hour24, start_am_pm))
     return court_url1, court_url2, hour24
 
-def set_url(court):
-    #today = datetime.datetime(2022, 4, 3)
-    today         = datetime.datetime.now()
-    date_nextweek = today + datetime.timedelta(days=8)
-    month         = date_nextweek.strftime("%m")
-    date          = date_nextweek.strftime("%d")
-    week_day      = (int)(date_nextweek.strftime("%w"))
-    # book courts of 8pm during Monday to Friday; otherwise 10am
-    hour24        = 20 if 0 < week_day and week_day < 6 else 10
+def set_url(court, date=None):
+    if date is None:
+        today         = datetime.datetime.now()
+        date_nextweek = today + datetime.timedelta(days=8)
+        month         = date_nextweek.strftime("%m")
+        day           = date_nextweek.strftime("%d")
+        week_day      = (int)(date_nextweek.strftime("%w"))
+        # book courts of 8pm during Monday to Friday; otherwise 10am
+        hour24        = 20 if 0 < week_day and week_day < 6 else 10
+    else:
+        month         = date.split('/')[0]
+        day           = date.split('/')[1]
+        hour24        = (int)(date.split('/')[2])
+        week_day      = 8
+
     hour12        = hour24 % 12
-    #hour = 10
 
     shour         = hour24 if hour24 <= 12 else hour24 % 12
     ehour         = (shour+1) if (shour+1) <= 12 else ((shour+1)%12)
     start_am_pm   = "am" if hour24 < 12 else "pm"
     end_am_pm     = "am" if ((hour24+1)%24) < 12 else "pm"
-    court_url1    = get_url(court, month, date, shour, ehour, start_am_pm, end_am_pm)
-    #start_am_pm   = "am" if hour24 < 12 else "pm"
-    #end_am_pm     = "am" if ((hour24+1)%24) < 12 else "pm"
-    #court_url1 = court_url_base.format(court, month, date, hour24%24, start_am_pm, (hour24+1)%24, end_am_pm)
-    #court_url1 = court_url_base.format(court, month, date, hour12, start_am_pm, hour12+1, end_am_pm)
+    court_url1    = get_url(court, month, day, shour, ehour, start_am_pm, end_am_pm)
 
     shour         = ehour
     ehour         = (shour+1) if (shour+1) <= 12 else ((shour+1)%12)
     start_am_pm   = "am" if ((hour24+1)%24) < 12 else "pm"
     end_am_pm     = "am" if ((hour24+2)%24) < 12 else "pm"
-    court_url2    = get_url(court, month, date, shour, ehour, start_am_pm, end_am_pm)
-    #start_am_pm   = "am" if ((hour24+1)%24) < 12 else "pm"
-    #end_am_pm     = "am" if ((hour24+2)%24) < 12 else "pm"
-    #court_url2 = court_url_base.format(court, month, date, hour12+1, start_am_pm, hour12+2, end_am_pm)
-    #court_url2 = court_url_base.format(court, month, date, (hour24+1)%24, start_am_pm, (hour24+2)%24, end_am_pm)
-    print("month: {}, date: {}, week_day: {}, hour: {}, start_am_pm: {}".format(month, date, week_day, hour12, start_am_pm))
+    court_url2    = get_url(court, month, day, shour, ehour, start_am_pm, end_am_pm)
+    print("month: {}, day: {}, week_day: {}, hour: {}, start_am_pm: {}".format(month, day, week_day, hour12, start_am_pm))
     return court_url1, court_url2, hour24
 
 def login():
@@ -96,7 +89,6 @@ def login():
     wait = WebDriverWait(driver, 10)
     wait.until(EC.presence_of_element_located((By.ID, "su1UserName")))
     #Step-1: login
-    #email_field = WebDriverWait(driver, 10).until(lambda x: x.find_element(By.ID, "su1UserName"))
     email_field = driver.find_element(By.ID, "su1UserName")
     print("Filling email")
     email_field.send_keys(email)
@@ -114,23 +106,19 @@ def login():
 
 def book_court(court_url):
     try:
-        #time.sleep(0.2)
         #print("Switching to booking page")
         driver.get(court_url)
         book_appt = driver.find_element(By.ID, "apptBtn")
-        #time.sleep(0.2)
         #print("Clicking book appt button")
         book_appt.click()
         driver.get_screenshot_as_file("screenshot1.png")
         checkout = driver.find_element(By.ID, "CheckoutButton")
-        #time.sleep(0.2)
         #print("Clicking checkout button")
         checkout.click()
         driver.get_screenshot_as_file("screenshot2.png")
         place_order = driver.find_element(By.ID, "buybtn")
-        #time.sleep(0.2)
         #print("Clicking place order button")
-        place_order.click()
+        #place_order.click()
     except Exception as e:
         print("Failed to book. Here's the link:{}".format(court_url))
         print(e)
@@ -148,6 +136,7 @@ def book_court(court_url):
 
 parser = argparse.ArgumentParser(description='Process login info')
 parser.add_argument('--name', type=str, required=True, help='The last name of the account')
+parser.add_argument('--date', type=str, help='The date and time to book courts.\n\tFormat: <mon>/<day>/<start hour>\n\t start hour is 24h. Auto book 2 hours')
 parser.add_argument('-d', action='store_true', help='Debug mode')
 args = parser.parse_args()
 
@@ -155,44 +144,25 @@ name = args.name
 email = loginfo[name][0]
 password = loginfo[name][1]
 court = book_info[name]
-court_url1, court_url2, sched_hour = set_url(court_dict[court])
+if args.date:
+    court_url1, court_url2, sched_hour = set_url(court_dict[court], date=args.date)
+else:
+    court_url1, court_url2, sched_hour = set_url(court_dict[court])
+
 if args.d:
     print(court_url1)
     print(court_url2)
-#exit()
 
 driver = get_driver()
-#assemble the booking url for specific court and time
-#court_url1 is for the first hour, court_url2 is for the second hour
-#court_url1, court_url2, sched_hour = customized_set_url(court_dict[17], '03', '30', 21)
-#court_url1, court_url2, sched_hour = customized_set_url(court_dict[17], '03', '30', 22)
-#print(court_url1)
-#print(court_url2)
-#court_url1, court_url2, sched_hour = customized_set_url(court_dict[17], '03', '30', 23)
-#print(court_url1)
-#print(court_url2)
-#court_url1, court_url2, sched_hour = customized_set_url(court_dict[17], '03', '30', 24)
-#print(court_url1)
-#print(court_url2)
-#exit()
 
 ##schedule the task for first hour
 sched_time1 = "23:59:30"
 sched_time2 = "00:00:00"
 sched_time3 = "00:00:30"
-#sched_time1 = "0{}:59:30" if sched_hour <= 10 else "{}:59:30"
-#sched_time2 = "0{}:00:00" if sched_hour < 10 else "{}:00:00"
 schedule.every().day.at(sched_time1).do(login)
 schedule.every().day.at(sched_time2).do(book_court, court_url1)
 schedule.every().day.at(sched_time3).do(book_court, court_url2)
-#
-##schedule the task for second hour
-#schedule.every().day.at(sched_time2.format(sched_hour)).do(login)
-#schedule.every().day.at(sched_time2.format(sched_hour+1)).do(book_court, court_url2)
 
-#schedule.every().day.do(login)
-#schedule.every().day.do(book_court, court_url1)
-#schedule.every().day.at("12:09:20").do(book_court, court_url2)
 if args.d:
     schedule.run_all()
     exit()
