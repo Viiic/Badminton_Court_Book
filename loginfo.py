@@ -9,3 +9,9 @@ book_info = {'wang': 14,
              'liu' : 16,
              'yuan': 17
              }
+
+name_list = {'wang': "Vic, Musheng, DanLin, CongWei",
+             'he'  : "Hugo, LongChen, Feike, Gaide",
+             'liu' : "Ethan, Taotian, Chunlai, Yuqi",
+             'yuan': "Weidong, Jianhua, Xingfang, Yongbo"
+}

@@ -8,6 +8,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 from loginfo import loginfo
 from loginfo import book_info
+from loginfo import name_list
 import time
 import schedule
 import datetime
@@ -51,19 +52,19 @@ def customized_set_url(court, month, date, hour24):
     return court_url1, court_url2, hour24
 
 def set_url(court, date=None, hour=None):
-    #if hour is None:
-    #    today         = datetime.datetime.now()
-    #    date_nextweek = today + datetime.timedelta(days=8)
-    #    month         = date_nextweek.strftime("%m")
-    #    day           = date_nextweek.strftime("%d")
-    #    week_day      = (int)(date_nextweek.strftime("%w"))
-    #    # book courts of 8pm during Monday to Friday; otherwise 10am
-    #    hour24        = 20 if 0 < week_day and week_day < 6 else 10
-    #else:
-    month         = date.split('/')[0]
-    day           = date.split('/')[1]
-    hour24        = hour
+    if date is None:
+        today         = datetime.datetime.now()
+        date_nextweek = today + datetime.timedelta(days=8)
+        month         = date_nextweek.strftime("%m")
+        day           = date_nextweek.strftime("%d")
+        #week_day      = (int)(date_nextweek.strftime("%w"))
+        # book courts of 8pm during Monday to Friday; otherwise 10am
+        #hour24        = 20 if 0 < week_day and week_day < 6 else 10
+    else:
+        month         = date.split('/')[0]
+        day           = date.split('/')[1]
 
+    hour24        = hour
     hour12        = hour24 % 12
     shour         = hour24 if hour24 <= 12 else hour24 % 12
     ehour         = (shour+1) if (shour+1) <= 12 else ((shour+1)%12)
@@ -82,9 +83,7 @@ def set_url(court, date=None, hour=None):
 
 def login():
     print("Starting login")
-    print(datetime.datetime.now().strftime("%Y-%m-%d:%H:%M:%S:%f"))
     driver.get(url)
-    print(datetime.datetime.now().strftime("%Y-%m-%d:%H:%M:%S:%f"))
     wait = WebDriverWait(driver, 10)
     wait.until(EC.presence_of_element_located((By.ID, "su1UserName")))
     #Step-1: login
@@ -104,6 +103,7 @@ def login():
     appt_field.click()
 
 def book_court(court_url):
+    print(datetime.datetime.now().strftime("%Y-%m-%d:%H:%M:%S:%f"))
     #Open a new tab
     driver.execute_script("window.open('');")
     #Switch to the new window and open new URL
@@ -112,6 +112,9 @@ def book_court(court_url):
     try:
         print("Starting to booking")
         driver.get(court_url)
+        #Write down player names int note box
+        note_box = driver.find_element(By.NAME, "txtNotes")
+        note_box.send_keys(player_names)
         book_appt = driver.find_element(By.ID, "apptBtn")
         print("Clicking book appt button")
         book_appt.click()
@@ -151,10 +154,17 @@ def book_court(court_url):
     finally:
         print(datetime.datetime.now().strftime("%Y-%m-%d:%H:%M:%S:%f"))
 
+def click_appt_tab():
+    #This is to avoid some issues when booking the second hour of the court
+    print("Clicking appointment tab")
+    appt_field = driver.find_element(By.ID, "tabA9")
+    appt_field.click()
+    time.sleep(1)
+
 
 parser = argparse.ArgumentParser(description='Process login info')
 parser.add_argument('--name', type=str, required=True, help='The last name of the account')
-parser.add_argument('--date', type=str, required=True, help='The date and time to book courts.\n\tFormat: <mon>/<day>/<start hour>\n\t start hour is 24h. Auto book 2 hours')
+parser.add_argument('--date', type=str, help='The date and time to book courts.\n\tFormat: <mon>/<day>/<start hour>\n\t start hour is 24h. Auto book 2 hours')
 parser.add_argument('--hour', type=int, required=True, help='The start hour to book a court. Must be 24 hour clock.')
 parser.add_argument('-d', action='store_true', help='Debug mode')
 args = parser.parse_args()
@@ -163,6 +173,7 @@ name = args.name
 email = loginfo[name][0]
 password = loginfo[name][1]
 court = book_info[name]
+player_names = name_list[name]
 court_url1, court_url2, sched_hour = set_url(court_dict[court], date=args.date, hour=args.hour)
 
 if args.d:
@@ -171,10 +182,25 @@ if args.d:
 
 driver = get_driver()
 ##schedule the task for first hour
-schedule.every().day.do(login).run()
-schedule.every().day.do(book_court, court_url1).run()
-print("Clicking appointment tab")
-appt_field = driver.find_element(By.ID, "tabA9")
-appt_field.click()
-time.sleep(3)
-schedule.every().day.do(book_court, court_url2).run()
+schedule.every().day.at("23:59:50").do(login)
+schedule.every().day.at("00:00:00").do(book_court, court_url1)
+schedule.every().day.at("00:00:03").do(click_appt_tab)
+schedule.every().day.at("00:00:05").do(book_court, court_url2)
+
+#For test use
+#schedule.every().day.at("15:25:50").do(login)
+#schedule.every().day.at("15:26:00").do(book_court, court_url1)
+#schedule.every().day.at("15:26:03").do(click_appt_tab)
+#schedule.every().day.at("15:26:05").do(book_court, court_url2)
+
+wait_time = schedule.idle_seconds() + 60
+print("wait time: %d" % wait_time)
+i = 0
+print(datetime.datetime.now().strftime("%Y-%m-%d:%H:%M:%S:%f"))
+while i < wait_time:
+    print("Waited for %d seconds" % i)
+    schedule.run_pending()
+    time.sleep(1)
+    i = i+1
+
+print(datetime.datetime.now().strftime("%Y-%m-%d:%H:%M:%S:%f"))
