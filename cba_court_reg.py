@@ -50,23 +50,21 @@ def customized_set_url(court, month, date, hour24):
     print("month: {}, date: {}, hour: {}, start_am_pm: {}".format(month, date, hour24, start_am_pm))
     return court_url1, court_url2, hour24
 
-def set_url(court, date=None):
-    if date is None:
-        today         = datetime.datetime.now()
-        date_nextweek = today + datetime.timedelta(days=8)
-        month         = date_nextweek.strftime("%m")
-        day           = date_nextweek.strftime("%d")
-        week_day      = (int)(date_nextweek.strftime("%w"))
-        # book courts of 8pm during Monday to Friday; otherwise 10am
-        hour24        = 20 if 0 < week_day and week_day < 6 else 10
-    else:
-        month         = date.split('/')[0]
-        day           = date.split('/')[1]
-        hour24        = (int)(date.split('/')[2])
-        week_day      = 8
+def set_url(court, date=None, hour=None):
+    #if hour is None:
+    #    today         = datetime.datetime.now()
+    #    date_nextweek = today + datetime.timedelta(days=8)
+    #    month         = date_nextweek.strftime("%m")
+    #    day           = date_nextweek.strftime("%d")
+    #    week_day      = (int)(date_nextweek.strftime("%w"))
+    #    # book courts of 8pm during Monday to Friday; otherwise 10am
+    #    hour24        = 20 if 0 < week_day and week_day < 6 else 10
+    #else:
+    month         = date.split('/')[0]
+    day           = date.split('/')[1]
+    hour24        = hour
 
     hour12        = hour24 % 12
-
     shour         = hour24 if hour24 <= 12 else hour24 % 12
     ehour         = (shour+1) if (shour+1) <= 12 else ((shour+1)%12)
     start_am_pm   = "am" if hour24 < 12 else "pm"
@@ -78,7 +76,8 @@ def set_url(court, date=None):
     start_am_pm   = "am" if ((hour24+1)%24) < 12 else "pm"
     end_am_pm     = "am" if ((hour24+2)%24) < 12 else "pm"
     court_url2    = get_url(court, month, day, shour, ehour, start_am_pm, end_am_pm)
-    print("month: {}, day: {}, week_day: {}, hour: {}, start_am_pm: {}".format(month, day, week_day, hour12, start_am_pm))
+    print("month: {}, day: {}, hour: {}, start_am_pm: {}".format(month, day, hour12, start_am_pm))
+    #print("month: {}, day: {}, week_day: {}, hour: {}, start_am_pm: {}".format(month, day, week_day, hour12, start_am_pm))
     return court_url1, court_url2, hour24
 
 def login():
@@ -155,7 +154,8 @@ def book_court(court_url):
 
 parser = argparse.ArgumentParser(description='Process login info')
 parser.add_argument('--name', type=str, required=True, help='The last name of the account')
-parser.add_argument('--date', type=str, help='The date and time to book courts.\n\tFormat: <mon>/<day>/<start hour>\n\t start hour is 24h. Auto book 2 hours')
+parser.add_argument('--date', type=str, required=True, help='The date and time to book courts.\n\tFormat: <mon>/<day>/<start hour>\n\t start hour is 24h. Auto book 2 hours')
+parser.add_argument('--hour', type=int, required=True, help='The start hour to book a court. Must be 24 hour clock.')
 parser.add_argument('-d', action='store_true', help='Debug mode')
 args = parser.parse_args()
 
@@ -163,17 +163,13 @@ name = args.name
 email = loginfo[name][0]
 password = loginfo[name][1]
 court = book_info[name]
-if args.date:
-    court_url1, court_url2, sched_hour = set_url(court_dict[court], date=args.date)
-else:
-    court_url1, court_url2, sched_hour = set_url(court_dict[court])
+court_url1, court_url2, sched_hour = set_url(court_dict[court], date=args.date, hour=args.hour)
 
 if args.d:
     print(court_url1)
     print(court_url2)
 
 driver = get_driver()
-
 ##schedule the task for first hour
 schedule.every().day.do(login).run()
 schedule.every().day.do(book_court, court_url1).run()
