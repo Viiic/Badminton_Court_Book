@@ -136,21 +136,22 @@ def book_court(court_url):
             place_order = driver.find_element(By.ID, "buybtn")
             print("Clicking place order button-2")
             place_order.click()
-        except Exception as e2:
-            print ("Didn't find the 'Court Reservation Member' option. Check if already booked")
+            
+        except Exception as e3:
+            print ("Didn't find the 'Checkout' button. Check if already booked")
 
         #Sometimes, directly booking succeed after clicking 'Book appointment' button
         try:
             booked = driver.find_element(By.ID, "notifyBooking")
             print("Find notifybooking. Probably booking succeed")
-        except Exception as e3:
-            print("Didn't find the 'check out' button and also the notifying popup window. Probably booking failed")
+        except Exception as e2:
+            print("{}: Didn't find the 'check out' button and also the notifying popup window. Probably booking failed".format(datetime.datetime.now().strftime("%Y-%m-%d:%H:%M:%S:%f")))
             print("Save screenshot for debug")
             splitted_url = court_url.split(':')
             stime = splitted_url[1].split('=')[-1]
-            etime = splitted_url[3].split('=')[-1]
-            driver.get_screenshot_as_file("screenshot_{}_{}.png".format(stime, etime))
+            driver.get_screenshot_as_file("screenshot_{}_{}.png".format(stime, name))
             raise Exception("Booking failed")
+            
     finally:
         print(datetime.datetime.now().strftime("%Y-%m-%d:%H:%M:%S:%f"))
 
@@ -161,7 +162,6 @@ def click_appt_tab():
     appt_field.click()
     time.sleep(1)
 
-
 parser = argparse.ArgumentParser(description='Process login info')
 parser.add_argument('--name', type=str, required=True, help='The last name of the account')
 parser.add_argument('--date', type=str, help='The date and time to book courts.\n\tFormat: <mon>/<day>/<start hour>\n\t start hour is 24h. Auto book 2 hours')
@@ -169,10 +169,10 @@ parser.add_argument('--hour', type=int, required=True, help='The start hour to b
 parser.add_argument('-d', action='store_true', help='Debug mode')
 args = parser.parse_args()
 
-name = args.name
-email = loginfo[name][0]
-password = loginfo[name][1]
-court = book_info[name]
+name         = args.name
+email        = loginfo[name][0]
+password     = loginfo[name][1]
+court        = book_info[name]
 player_names = name_list[name]
 court_url1, court_url2, sched_hour = set_url(court_dict[court], date=args.date, hour=args.hour)
 
