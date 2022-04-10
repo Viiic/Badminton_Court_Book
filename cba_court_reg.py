@@ -1,14 +1,15 @@
-from selenium import webdriver
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.common.by import By
+from selenium                          import webdriver
+from selenium.webdriver.common.keys    import Keys
+from selenium.webdriver.common.by      import By
 from selenium.webdriver.chrome.service import Service
-from selenium.webdriver import ActionChains
-from selenium.webdriver.support.wait import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from webdriver_manager.chrome import ChromeDriverManager
-from loginfo import loginfo
-from loginfo import book_info
-from loginfo import name_list
+from selenium.webdriver                import ActionChains
+from selenium.webdriver.support.wait   import WebDriverWait
+from selenium.webdriver.support        import expected_conditions as EC
+from webdriver_manager.chrome          import ChromeDriverManager
+from booking_info                      import loginfo
+from booking_info                      import book_info
+from booking_info                      import name_list
+from logger                            import get_logger
 import time
 import schedule
 import datetime
@@ -28,6 +29,7 @@ def get_driver():
         options.add_argument('--headless')
         user_agent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.4844.83 Safari/537.36'
         options.add_argument(f'user-agent={user_agent}')
+
     service = Service("/Users/WeifanWang/workspace/cba_court_reg/chromedriver")
     driver = webdriver.Chrome(service=service, options=options)
     return driver
@@ -48,7 +50,7 @@ def customized_set_url(court, month, date, hour24):
     start_am_pm   = "am" if ((hour24+1)%24) < 12 else "pm"
     end_am_pm     = "am" if ((hour24+2)%24) < 12 else "pm"
     court_url2    = get_url(court, month, date, shour, ehour, start_am_pm, end_am_pm)
-    log("month: {}, date: {}, hour: {}, start_am_pm: {}".format(month, date, hour24, start_am_pm))
+    logger.info("month: {}, date: {}, hour: {}, start_am_pm: {}".format(month, date, hour24, start_am_pm))
     return court_url1, court_url2, hour24
 
 def set_url(court, date=None, hour=None):
@@ -74,33 +76,33 @@ def set_url(court, date=None, hour=None):
     start_am_pm   = "am" if ((hour24+1)%24) < 12 else "pm"
     end_am_pm     = "am" if ((hour24+2)%24) < 12 else "pm"
     court_url2    = get_url(court, month, day, shour, ehour, start_am_pm, end_am_pm)
-    log("month: {}, day: {}, hour: {}, start_am_pm: {}".format(month, day, hour12, start_am_pm))
-    #log("month: {}, day: {}, week_day: {}, hour: {}, start_am_pm: {}".format(month, day, week_day, hour12, start_am_pm))
+    logger.info("month: {}, day: {}, hour: {}, start_am_pm: {}".format(month, day, hour12, start_am_pm))
+    #logger.info("month: {}, day: {}, week_day: {}, hour: {}, start_am_pm: {}".format(month, day, week_day, hour12, start_am_pm))
     return court_url1, court_url2, hour24
 
 def login():
-    log("Starting login")
+    logger.info("Starting login")
     driver.get(url)
     wait = WebDriverWait(driver, 10)
     wait.until(EC.presence_of_element_located((By.ID, "su1UserName")))
     #Step-1: login
     email_field = driver.find_element(By.ID, "su1UserName")
-    log("Filling email")
+    logger.info("Filling email")
     email_field.send_keys(email)
     password_field = driver.find_element(By.ID, "su1Password")
-    log("Filling password")
+    logger.info("Filling password")
     password_field.send_keys(password)
-    log("login")
+    logger.info("login")
     password_field.send_keys(Keys.ENTER)
     
     time.sleep(1)
     #Step-2: click the 'Appointment' tab
-    log("Clicking appointment tab")
+    logger.info("Clicking appointment tab")
     appt_field = driver.find_element(By.ID, "tabA9")
     appt_field.click()
 
 def book_court(time):
-    log("Starting to booking")
+    logger.info("Starting to booking")
 
     try:
         checkout = driver.find_element(By.ID, "CheckoutButton")
@@ -109,40 +111,40 @@ def book_court(time):
         #Sometimes, will jump to 'court reservation member' page after clicking 'Book appointment' button
         try:
             court_rsv_member = driver.find_element(By.NAME, "Court Reservation Member ")
-            log("Clicking court reservation button")
+            logger.info("Clicking court reservation button")
             court_rsv_member.click()
             checkout = driver.find_element(By.ID, "CheckoutButton")
-            log("Clicking checkout button-1")
+            logger.info("Clicking checkout button-1")
             checkout.click()
             place_order = driver.find_element(By.ID, "buybtn")
-            log("Clicking place order button-2")
+            logger.info("Clicking place order button-2")
             place_order.click()
             
         except Exception as e3:
-            log("Didn't find the 'Checkout' button. Check if already booked")
+            logger.info("Didn't find the 'Checkout' button. Check if already booked")
 
         #Sometimes, directly booking succeed after clicking 'Book appointment' button
         try:
             booked = driver.find_element(By.ID, "notifyBooking")
-            log("Find notifybooking. Probably booking succeeded")
+            logger.info("Find notifybooking. Probably booking succeeded")
         except Exception as e2:
-            log("{}: Didn't find the 'check out' button and also the notifying popup window. Probably booking failed".format(datetime.datetime.now().strftime("%Y-%m-%d:%H:%M:%S:%f")))
-            log("Save screenshot for debug")
+            logger.info("{}: Didn't find the 'check out' button and also the notifying popup window. Probably booking failed".format(datetime.datetime.now().strftime("%Y-%m-%d:%H:%M:%S:%f")))
+            logger.info("Save screenshot for debug")
             driver.get_screenshot_as_file("screenshot_{}_{}.png".format(time, name))
-            log("Booking failed")
+            logger.info("Booking failed")
             return
     else:
-        log("Clicking checkout button")
+        logger.info("Clicking checkout button")
         checkout.click()
         place_order = driver.find_element(By.ID, "buybtn")
-        log("Clicking place order button")
+        logger.info("Clicking place order button")
         place_order.click()
             
     finally:
-        log("Booking DONE")
+        logger.info("Booking DONE")
 
 def add_to_cart(court_url):
-    log("Starting to add court to cart")
+    logger.info("Starting to add court to cart")
     #Open a new tab
     driver.execute_script("window.open('');")
     #Switch to the new window and open new URL
@@ -153,22 +155,22 @@ def add_to_cart(court_url):
     note_box = driver.find_element(By.NAME, "txtNotes")
     note_box.send_keys(player_names)
     book_appt = driver.find_element(By.ID, "apptBtn")
-    log("Clicking book appt button")
+    logger.info("Clicking book appt button")
     book_appt.click()
     try:
         continue_shop = driver.find_element(By.ID, "ContinueShoppingLink")
     except Exception as e1:
-        log ("Didn't find the 'Continue shopping' button. Check if need to choose 'court reservation member")
+        logger.info ("Didn't find the 'Continue shopping' button. Check if need to choose 'court reservation member")
         #Sometimes, will jump to 'court reservation member' page after clicking 'Book appointment' button
         try:
             court_rsv_member = driver.find_element(By.NAME, "Court Reservation Member ")
-            log("Clicking court reservation button")
+            logger.info("Clicking court reservation button")
             court_rsv_member.click()
             continue_shop = driver.find_element(By.ID, "ContinueShoppingLink")
             return   
         except Exception as e3:
-            log ("Didn't find the 'Court reservation member' for Continue shopping' button. Check if already booked")
-            log("Save screenshot for debug")
+            logger.info ("Didn't find the 'Court reservation member' for Continue shopping' button. Check if already booked")
+            logger.info("Save screenshot for debug")
             splitted_url = court_url.split(':')
             stime = splitted_url[1].split('=')[-1]
             driver.get_screenshot_as_file("screenshot_{}_{}_1.png".format(stime, name))
@@ -176,19 +178,19 @@ def add_to_cart(court_url):
         #Sometimes, directly booking succeed after clicking 'Book appointment' button
         try:
             booked = driver.find_element(By.ID, "notifyBooking")
-            log("Find notifybooking. Probably booking succeed")
+            logger.info("Find notifybooking. Probably booking succeed")
         except Exception as e2:
-            log("{}: Didn't find the 'Continue shopping' button and also the notifying popup window. Probably booking failed".format(datetime.datetime.now().strftime("%Y-%m-%d:%H:%M:%S:%f")))
-            log("Save screenshot for debug")
+            logger.info("{}: Didn't find the 'Continue shopping' button and also the notifying popup window. Probably booking failed".format(datetime.datetime.now().strftime("%Y-%m-%d:%H:%M:%S:%f")))
+            logger.info("Save screenshot for debug")
             splitted_url = court_url.split(':')
             stime = splitted_url[1].split('=')[-1]
             driver.get_screenshot_as_file("screenshot_{}_{}_2.png".format(stime, name))
-            log("Booking failed: {}".foramt(court_url))
+            logger.info("Booking failed: {}".foramt(court_url))
             return
     else:
-        log("Added")
+        logger.info("Added")
     finally:
-        log("Added Done anyway")
+        logger.info("Added Done anyway")
 
 def log(msg):
     ctime = datetime.datetime.now().strftime("%Y-%m-%d:%H:%M:%S:%f")
@@ -196,7 +198,7 @@ def log(msg):
 
 def click_appt_tab():
     #This is to avoid some issues when booking the second hour of the court
-    log("Clicking appointment tab")
+    logger.info("Clicking appointment tab")
     appt_field = driver.find_element(By.ID, "tabA9")
     appt_field.click()
     time.sleep(1)
@@ -214,10 +216,11 @@ password     = loginfo[name][1]
 court        = book_info[name]
 player_names = name_list[name]
 timestamp    = "{}:{}".format(args.date, args.hour)
+logger       = get_logger(__name__, "debug_log_{}.txt".format(name))
 
 court_url1, court_url2, sched_hour = set_url(court_dict[court], date=args.date, hour=args.hour)
-log(court_url1)
-log(court_url2)
+logger.info(court_url1)
+logger.info(court_url2)
 driver = get_driver()
 
 if not args.d:
@@ -237,13 +240,13 @@ else:
     exit()
 
 wait_time = schedule.idle_seconds() + 60
-log("wait time: %d" % wait_time)
+logger.info("wait time: %d" % wait_time)
 i = 0
-log("Starting scheduled task")
+logger.info("Starting scheduled task")
 while i < wait_time:
-    log("Waited for %d seconds" % i)
+    logger.info("Waited for %d seconds" % i)
     schedule.run_pending()
     time.sleep(1)
     i = i+1
 
-log("All DONE")
+logger.info("All DONE")
