@@ -128,7 +128,7 @@ def book_court(time):
             booked = driver.find_element(By.ID, "notifyBooking")
             logger.info("Find notifybooking. Probably booking succeeded")
         except Exception as e2:
-            logger.info("{}: Didn't find the 'check out' button and also the notifying popup window. Probably booking failed".format(datetime.datetime.now().strftime("%Y-%m-%d:%H:%M:%S:%f")))
+            logger.info("Didn't find the 'check out' button and also the notifying popup window. Probably booking failed".format(datetime.datetime.now().strftime("%Y-%m-%d:%H:%M:%S:%f")))
             logger.info("Save screenshot for debug")
             driver.get_screenshot_as_file("screenshot_{}_{}.png".format(time, name))
             logger.info("Booking failed")
@@ -180,7 +180,7 @@ def add_to_cart(court_url):
             booked = driver.find_element(By.ID, "notifyBooking")
             logger.info("Find notifybooking. Probably booking succeed")
         except Exception as e2:
-            logger.info("{}: Didn't find the 'Continue shopping' button and also the notifying popup window. Probably booking failed".format(datetime.datetime.now().strftime("%Y-%m-%d:%H:%M:%S:%f")))
+            logger.info("Didn't find the 'Continue shopping' button and also the notifying popup window. Probably booking failed".format(datetime.datetime.now().strftime("%Y-%m-%d:%H:%M:%S:%f")))
             logger.info("Save screenshot for debug")
             splitted_url = court_url.split(':')
             stime = splitted_url[1].split('=')[-1]
