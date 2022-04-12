@@ -250,3 +250,4 @@ while i < wait_time:
     i = i+1
 
 logger.info("All DONE")
+driver.quit()
