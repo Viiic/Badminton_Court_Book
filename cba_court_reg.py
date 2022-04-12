@@ -19,6 +19,7 @@ driver_path = "/Users/WeifanWang/workspace/cba_court_reg/chromedriver"
 url = "https://clients.mindbodyonline.com/ASP/su1.asp?studioid=217228&tg=&vt=&lvl=&stype=&view=&trn=0&page=&catid=&prodid=&date=3%2f24%2f2022&classid=0&prodGroupId=&sSU=&optForwardingLink=&qParam=&justloggedin=&nLgIn=&pMode=0&loc=1"
 court_dict = {11:54, 12:69, 13:56, 14:71, 15:72, 16:73, 17:50, 18:80, 19:83, 20:85}
 court_url_base = "https://clients.mindbodyonline.com/asp/appt_con.asp?loc=1&tgid=5&trnid=1000000{}&rtrnid=&date={}/{}/2022&mask=False&STime={}:00:00%20{}&ETime={}:00:00%20{}"
+shopping_cart_url = "https://clients.mindbodyonline.com/asp/main_shop.asp?stype=3&pMode=4&reSchedule=&origId=&recType=&recNum="
 
 def get_driver():
     #Initialize webdriver object
@@ -101,46 +102,39 @@ def login():
     appt_field = driver.find_element(By.ID, "tabA9")
     appt_field.click()
 
-def book_court(time):
-    logger.info("Starting to booking")
+def prepare_for_booking(stime):
+    logger.info("Prepare for placing the booking order")
 
     try:
         checkout = driver.find_element(By.ID, "CheckoutButton")
-        
     except Exception as e1:
-        #Sometimes, will jump to 'court reservation member' page after clicking 'Book appointment' button
-        try:
-            court_rsv_member = driver.find_element(By.NAME, "Court Reservation Member ")
-            logger.info("Clicking court reservation button")
-            court_rsv_member.click()
-            checkout = driver.find_element(By.ID, "CheckoutButton")
-            logger.info("Clicking checkout button-1")
-            checkout.click()
-            place_order = driver.find_element(By.ID, "buybtn")
-            logger.info("Clicking place order button-2")
-            place_order.click()
-            
-        except Exception as e3:
-            logger.info("Didn't find the 'Checkout' button. Check if already booked")
-
         #Sometimes, directly booking succeed after clicking 'Book appointment' button
         try:
             booked = driver.find_element(By.ID, "notifyBooking")
             logger.info("Find notifybooking. Probably booking succeeded")
         except Exception as e2:
             logger.info("Didn't find the 'check out' button and also the notifying popup window. Probably booking failed".format(datetime.datetime.now().strftime("%Y-%m-%d:%H:%M:%S:%f")))
-            logger.info("Save screenshot for debug")
-            driver.get_screenshot_as_file("screenshot_{}_{}.png".format(time, name))
-            logger.info("Booking failed")
+            save_screenshot(time=stime)
+            logger.info("Preparation failed")
             return
     else:
         logger.info("Clicking checkout button")
         checkout.click()
+        logger.info("Preparation DONE")
+
+def submit_booking(stime):
+    #Start at 00:00:00.05 to avoid the attention of the CBA boss
+    time.sleep(0.5)
+
+    try:
         place_order = driver.find_element(By.ID, "buybtn")
         logger.info("Clicking place order button")
-        place_order.click()
-            
-    finally:
+        #place_order.click()
+    except Exception as e:
+        logger.info("Placing order failed")
+        save_screenshot(time=stime)
+        logger.info("Booking failed")
+    else:
         logger.info("Booking DONE")
 
 def add_to_cart(court_url):
@@ -167,30 +161,47 @@ def add_to_cart(court_url):
             logger.info("Clicking court reservation button")
             court_rsv_member.click()
             continue_shop = driver.find_element(By.ID, "ContinueShoppingLink")
-            return   
+            logger.info("Retrying to add courts succeeded!")
+            return
         except Exception as e3:
             logger.info ("Didn't find the 'Court reservation member' for Continue shopping' button. Check if already booked")
-            logger.info("Save screenshot for debug")
-            splitted_url = court_url.split(':')
-            stime = splitted_url[1].split('=')[-1]
-            driver.get_screenshot_as_file("screenshot_{}_{}_1.png".format(stime, name))
+            save_screenshot(url=court_url)
 
         #Sometimes, directly booking succeed after clicking 'Book appointment' button
         try:
             booked = driver.find_element(By.ID, "notifyBooking")
             logger.info("Find notifybooking. Probably booking succeed")
+            return
         except Exception as e2:
             logger.info("Didn't find the 'Continue shopping' button and also the notifying popup window. Probably booking failed".format(datetime.datetime.now().strftime("%Y-%m-%d:%H:%M:%S:%f")))
-            logger.info("Save screenshot for debug")
-            splitted_url = court_url.split(':')
-            stime = splitted_url[1].split('=')[-1]
-            driver.get_screenshot_as_file("screenshot_{}_{}_2.png".format(stime, name))
-            logger.info("Booking failed: {}".foramt(court_url))
-            return
+            save_screenshot(url=court_url)
+            logger.info("Booking failed: {}".format(court_url))
+
+        #If adding court failed, go the shopping cart and try to submit the order
+        try:
+            driver.get(shopping_cart_url)
+            checkout = driver.find_element(By.ID, "CheckoutButton")
+        except Exception as e3:
+            logger.info("Something wrong. Probably nothing in the cart Saving screenshot")
+            save_screenshot(url=court_url)
+        else:
+            logger.info("Some courts in shopping cart. Will place the order")
+
     else:
-        logger.info("Added")
+        logger.info("Adding courts succeeded!")
     finally:
-        logger.info("Added Done anyway")
+        logger.info("Adding Done")
+
+def save_screenshot(url=None, stime=None):
+    logger.info("Save screenshot for debug")
+    if url is not None:
+        splitted_url = url.split(':')
+        stime = splitted_url[1].split('=')[-1]
+        driver.get_screenshot_as_file("screenshot_{}_{}.png".format(stime, name))
+    elif stime is not None:
+        driver.get_screenshot_as_file("screenshot_{}_{}.png".format(stime, name))
+
+    logger.info("Saving screenshot DONE")
 
 def log(msg):
     ctime = datetime.datetime.now().strftime("%Y-%m-%d:%H:%M:%S:%f")
@@ -205,7 +216,7 @@ def click_appt_tab():
 
 parser = argparse.ArgumentParser(description='Process login info')
 parser.add_argument('--name', type=str, required=True, help='The last name of the account')
-parser.add_argument('--date', type=str,                help='The date and time to book courts.\n\tFormat: <mon>/<day>/<start hour>\n\t start hour is 24h. Auto book 2 hours')
+parser.add_argument('--date', type=str,                help='The date and time to book courts.\n\tFormat: <mon>/<day>\n')
 parser.add_argument('--hour', type=int, required=True, help='The start hour to book a court. Must be 24 hour clock.')
 parser.add_argument('-d',     action='store_true',     help='Debug mode')
 args = parser.parse_args()
@@ -229,14 +240,16 @@ if not args.d:
     schedule.every().day.at("23:59:40").do(add_to_cart, court_url1)
     schedule.every().day.at("23:59:45").do(click_appt_tab)
     schedule.every().day.at("23:59:48").do(add_to_cart, court_url2)
-    schedule.every().day.at("00:00:00").do(book_court, timestamp)
+    schedule.every().day.at("23:59:55").do(prepare_for_booking, timestamp)
+    schedule.every().day.at("00:00:00").do(submit_booking, timestamp)
 else:
     #For test use
     login()
     add_to_cart(court_url1)
     click_appt_tab()
     add_to_cart(court_url2)
-    book_court(timestamp)
+    prepare_for_booking(timestamp)
+    submit_booking(timestamp)
     exit()
 
 wait_time = schedule.idle_seconds() + 60
