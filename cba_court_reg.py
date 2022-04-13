@@ -106,18 +106,15 @@ def prepare_for_booking(stime):
     logger.info("Prepare for placing the booking order")
 
     try:
+        #If adding court failed, go the shopping cart and try to submit the order
+        driver.get(shopping_cart_url)
         checkout = driver.find_element(By.ID, "CheckoutButton")
     except Exception as e1:
-        #Sometimes, directly booking succeed after clicking 'Book appointment' button
-        try:
-            booked = driver.find_element(By.ID, "notifyBooking")
-            logger.info("Find notifybooking. Probably booking succeeded")
-        except Exception as e2:
-            logger.info("Didn't find the 'check out' button and also the notifying popup window. Probably booking failed".format(datetime.datetime.now().strftime("%Y-%m-%d:%H:%M:%S:%f")))
-            save_screenshot(time=stime)
-            logger.info("Preparation failed")
-            return
+        logger.info("Something wrong. Probably nothing in the cart Saving screenshot")
+        save_screenshot(url=court_url)
     else:
+        logger.info("Screenshot the shopping cart")
+        driver.get_screenshot_as_file("shopping_cart_screenshot_{}.png".format(name))
         logger.info("Clicking checkout button")
         checkout.click()
         logger.info("Preparation DONE")
@@ -129,7 +126,7 @@ def submit_booking(stime):
     try:
         place_order = driver.find_element(By.ID, "buybtn")
         logger.info("Clicking place order button")
-        #place_order.click()
+        place_order.click()
     except Exception as e:
         logger.info("Placing order failed")
         save_screenshot(time=stime)
@@ -175,18 +172,7 @@ def add_to_cart(court_url):
         except Exception as e2:
             logger.info("Didn't find the 'Continue shopping' button and also the notifying popup window. Probably booking failed".format(datetime.datetime.now().strftime("%Y-%m-%d:%H:%M:%S:%f")))
             save_screenshot(url=court_url)
-            logger.info("Booking failed: {}".format(court_url))
-
-        #If adding court failed, go the shopping cart and try to submit the order
-        try:
-            driver.get(shopping_cart_url)
-            checkout = driver.find_element(By.ID, "CheckoutButton")
-        except Exception as e3:
-            logger.info("Something wrong. Probably nothing in the cart Saving screenshot")
-            save_screenshot(url=court_url)
-        else:
-            logger.info("Some courts in shopping cart. Will place the order")
-
+            logger.info("Adding court failed: {}".format(court_url))
     else:
         logger.info("Adding courts succeeded!")
     finally:
@@ -240,7 +226,7 @@ if not args.d:
     schedule.every().day.at("23:59:40").do(add_to_cart, court_url1)
     schedule.every().day.at("23:59:45").do(click_appt_tab)
     schedule.every().day.at("23:59:48").do(add_to_cart, court_url2)
-    schedule.every().day.at("23:59:55").do(prepare_for_booking, timestamp)
+    schedule.every().day.at("23:59:53").do(prepare_for_booking, timestamp)
     schedule.every().day.at("00:00:00").do(submit_booking, timestamp)
 else:
     #For test use
