@@ -111,10 +111,10 @@ def prepare_for_booking(stime):
         checkout = driver.find_element(By.ID, "CheckoutButton")
     except Exception as e1:
         logger.info("Something wrong. Probably nothing in the cart Saving screenshot")
-        save_screenshot(url=court_url)
+        save_screenshot("empty_cart_{}_{}".format(name, args.hour))
     else:
         logger.info("Screenshot the shopping cart")
-        driver.get_screenshot_as_file("shopping_cart_screenshot_{}.png".format(name))
+        save_screenshot("cart_{}_{}".format(name, args.hour))
         logger.info("Clicking checkout button")
         checkout.click()
         logger.info("Preparation DONE")
@@ -129,9 +129,11 @@ def submit_booking(stime):
         place_order.click()
     except Exception as e:
         logger.info("Placing order failed")
-        save_screenshot(time=stime)
+        save_screenshot("place_order_except_{}_{}".format(name, args.hour))
         logger.info("Booking failed")
     else:
+        time.sleep(1)
+        save_screenshot("book_done_{}_{}".format(name, args.hour))
         logger.info("Booking DONE")
 
 def add_to_cart(court_url):
@@ -162,7 +164,7 @@ def add_to_cart(court_url):
             return
         except Exception as e3:
             logger.info ("Didn't find the 'Court reservation member' for Continue shopping' button. Check if already booked")
-            save_screenshot(url=court_url)
+            save_screenshot("crt_rsv_{}_{}".format(name, args.hour))
 
         #Sometimes, directly booking succeed after clicking 'Book appointment' button
         try:
@@ -171,22 +173,16 @@ def add_to_cart(court_url):
             return
         except Exception as e2:
             logger.info("Didn't find the 'Continue shopping' button and also the notifying popup window. Probably booking failed".format(datetime.datetime.now().strftime("%Y-%m-%d:%H:%M:%S:%f")))
-            save_screenshot(url=court_url)
+            save_screenshot("no_notice_{}_{}".format(name, args.hour))
             logger.info("Adding court failed: {}".format(court_url))
     else:
         logger.info("Adding courts succeeded!")
     finally:
         logger.info("Adding Done")
 
-def save_screenshot(url=None, stime=None):
+def save_screenshot(filename):
     logger.info("Save screenshot for debug")
-    if url is not None:
-        splitted_url = url.split(':')
-        stime = splitted_url[1].split('=')[-1]
-        driver.get_screenshot_as_file("screenshot_{}_{}.png".format(stime, name))
-    elif stime is not None:
-        driver.get_screenshot_as_file("screenshot_{}_{}.png".format(stime, name))
-
+    driver.get_screenshot_as_file("screenshot_{}.png".format(filename))
     logger.info("Saving screenshot DONE")
 
 def log(msg):
