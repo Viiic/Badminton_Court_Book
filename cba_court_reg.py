@@ -15,11 +15,15 @@ import schedule
 import datetime
 import argparse
 
-driver_path = "/Users/WeifanWang/workspace/cba_court_reg/chromedriver"
+driver_path = "/Users/WeifanWang/workspace/Badminton_Court_Book/chromedriver"
 url = "https://clients.mindbodyonline.com/ASP/su1.asp?studioid=217228&tg=&vt=&lvl=&stype=&view=&trn=0&page=&catid=&prodid=&date=3%2f24%2f2022&classid=0&prodGroupId=&sSU=&optForwardingLink=&qParam=&justloggedin=&nLgIn=&pMode=0&loc=1"
 court_dict = {11:54, 12:69, 13:56, 14:71, 15:72, 16:73, 17:50, 18:80, 19:83, 20:85}
 court_url_base = "https://clients.mindbodyonline.com/asp/appt_con.asp?loc=1&tgid=5&trnid=1000000{}&rtrnid=&date={}/{}/2022&mask=False&STime={}:00:00%20{}&ETime={}:00:00%20{}"
 shopping_cart_url = "https://clients.mindbodyonline.com/asp/main_shop.asp?stype=3&pMode=4&reSchedule=&origId=&recType=&recNum="
+schedule_url = "https://clients.mindbodyonline.com/ASP/my_sch.asp"
+
+idx          = 0                 # idx for screenshot
+res          = False             # Result of adding court to the cart
 
 def get_driver():
     #Initialize webdriver object
@@ -31,7 +35,8 @@ def get_driver():
         user_agent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.4844.83 Safari/537.36'
         options.add_argument(f'user-agent={user_agent}')
 
-    service = Service("/Users/WeifanWang/workspace/cba_court_reg/chromedriver")
+    service = Service(driver_path)
+    #service = Service("/Users/WeifanWang/workspace/cba_court_reg/chromedriver")
     driver = webdriver.Chrome(service=service, options=options)
     return driver
 
@@ -117,6 +122,7 @@ def prepare_for_booking(stime):
         save_screenshot("cart_{}_{}".format(name, args.hour))
         logger.info("Clicking checkout button")
         checkout.click()
+        time.sleep(0.2)
         logger.info("Preparation DONE")
 
 def submit_booking(stime):
@@ -132,11 +138,13 @@ def submit_booking(stime):
         save_screenshot("place_order_except_{}_{}".format(name, args.hour))
         logger.info("Booking failed")
     else:
-        time.sleep(1)
+        time.sleep(5)
         save_screenshot("book_done_{}_{}".format(name, args.hour))
         logger.info("Booking DONE")
 
 def add_to_cart(court_url):
+    global idx
+    global res
     logger.info("Starting to add court to cart")
     #Open a new tab
     driver.execute_script("window.open('');")
@@ -145,7 +153,13 @@ def add_to_cart(court_url):
 
     driver.get(court_url)
     #Write down player names int note box
-    note_box = driver.find_element(By.NAME, "txtNotes")
+    try:
+        note_box = driver.find_element(By.NAME, "txtNotes")
+    except:
+        logger.info("Didn't get into the right page to fill the names")
+        save_screenshot("no_text_box_{}_{}_{}".format(name, args.hour, idx))
+        return
+
     note_box.send_keys(player_names)
     book_appt = driver.find_element(By.ID, "apptBtn")
     logger.info("Clicking book appt button")
@@ -161,10 +175,11 @@ def add_to_cart(court_url):
             court_rsv_member.click()
             continue_shop = driver.find_element(By.ID, "ContinueShoppingLink")
             logger.info("Retrying to add courts succeeded!")
+            res = True
             return
         except Exception as e3:
             logger.info ("Didn't find the 'Court reservation member' for Continue shopping' button. Check if already booked")
-            save_screenshot("crt_rsv_{}_{}".format(name, args.hour))
+            save_screenshot("crt_rsv_{}_{}_{}".format(name, args.hour, idx))
 
         #Sometimes, directly booking succeed after clicking 'Book appointment' button
         try:
@@ -173,12 +188,18 @@ def add_to_cart(court_url):
             return
         except Exception as e2:
             logger.info("Didn't find the 'Continue shopping' button and also the notifying popup window. Probably booking failed".format(datetime.datetime.now().strftime("%Y-%m-%d:%H:%M:%S:%f")))
-            save_screenshot("no_notice_{}_{}".format(name, args.hour))
+            save_screenshot("no_notice_{}_{}_{}".format(name, args.hour, idx))
             logger.info("Adding court failed: {}".format(court_url))
     else:
         logger.info("Adding courts succeeded!")
+        res = True
     finally:
+        idx += 1
         logger.info("Adding Done")
+
+def get_court_list_screenshot():
+    driver.get(schedule_url)
+    save_screenshot("court_list_{}".format(name))
 
 def save_screenshot(filename):
     logger.info("Save screenshot for debug")
@@ -190,11 +211,15 @@ def log(msg):
     print("{}: {}".format(ctime, msg))
 
 def click_appt_tab():
+    #TODO: refreash the page before clicking the tab since sometimes the tab is not clickable, e.g. hit the CAPTCH
     #This is to avoid some issues when booking the second hour of the court
     logger.info("Clicking appointment tab")
     appt_field = driver.find_element(By.ID, "tabA9")
     appt_field.click()
     time.sleep(1)
+
+def reset_result():
+    res = False
 
 parser = argparse.ArgumentParser(description='Process login info')
 parser.add_argument('--name', type=str, required=True, help='The last name of the account')
@@ -211,27 +236,53 @@ player_names = name_list[name]
 timestamp    = "{}:{}".format(args.date, args.hour)
 logger       = get_logger(__name__, "debug_log_{}.txt".format(name))
 
+pre_court_url, _, _ = set_url(court_dict[court], date="5/10", hour=16)
+logger.info(pre_court_url)
+
 court_url1, court_url2, sched_hour = set_url(court_dict[court], date=args.date, hour=args.hour)
 logger.info(court_url1)
 logger.info(court_url2)
 driver = get_driver()
 
+#if args.d:
 if not args.d:
+    sched_time_1 = "23:58:{}"
+    sched_time_2 = "00:00:{}"
+    sched_time_1 = "09:29:{}"
+    sched_time_2 = "09:30:{}"
     ##schedule the task for first hour
-    schedule.every().day.at("23:59:30").do(login)
-    schedule.every().day.at("23:59:40").do(add_to_cart, court_url1)
-    schedule.every().day.at("23:59:45").do(click_appt_tab)
-    schedule.every().day.at("23:59:48").do(add_to_cart, court_url2)
-    schedule.every().day.at("23:59:53").do(prepare_for_booking, timestamp)
-    schedule.every().day.at("00:00:00").do(submit_booking, timestamp)
+    # Booking any court in advance
+    schedule.every().day.at(sched_time_1.format("00")).do(login)
+    schedule.every().day.at(sched_time_1.format("10")).do(add_to_cart, pre_court_url)
+    schedule.every().day.at(sched_time_1.format("15")).do(prepare_for_booking, timestamp)
+    schedule.every().day.at(sched_time_1.format("20")).do(submit_booking, timestamp)
+    schedule.every().day.at(sched_time_1.format("30")).do(reset_result)
+    schedule.every().day.at(sched_time_1.format("31")).do(click_appt_tab)
+
+    #Booking the courts
+    schedule.every().day.at(sched_time_2.format("00")).do(add_to_cart, court_url1)
+    schedule.every().day.at(sched_time_2.format("01")).do(click_appt_tab)
+    schedule.every().day.at(sched_time_2.format("02")).do(add_to_cart, court_url2)
+    schedule.every().day.at(sched_time_2.format("03")).do(prepare_for_booking, timestamp)
+    schedule.every().day.at(sched_time_2.format("04")).do(submit_booking, timestamp)
 else:
     #For test use
     login()
-    add_to_cart(court_url1)
-    click_appt_tab()
-    add_to_cart(court_url2)
+    add_to_cart(pre_court_url)
     prepare_for_booking(timestamp)
     submit_booking(timestamp)
+
+    reset_result()
+    click_appt_tab()
+    add_to_cart(court_url1)
+    click_appt_tab()
+    #add_to_cart(court_url2)
+
+    if res:
+        prepare_for_booking(timestamp)
+        submit_booking(timestamp)
+
+    get_court_list_screenshot()
     exit()
 
 wait_time = schedule.idle_seconds() + 60
@@ -244,5 +295,6 @@ while i < wait_time:
     time.sleep(1)
     i = i+1
 
+get_court_list_screenshot()
 logger.info("All DONE")
 driver.quit()
