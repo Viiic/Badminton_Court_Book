@@ -212,6 +212,7 @@ def log(msg):
 
 def click_appt_tab():
     #TODO: refreash the page before clicking the tab since sometimes the tab is not clickable, e.g. hit the CAPTCH
+    driver.navigate().refresh();
     #This is to avoid some issues when booking the second hour of the court
     logger.info("Clicking appointment tab")
     appt_field = driver.find_element(By.ID, "tabA9")
@@ -248,8 +249,8 @@ driver = get_driver()
 if not args.d:
     sched_time_1 = "23:58:{}"
     sched_time_2 = "00:00:{}"
-    sched_time_1 = "09:29:{}"
-    sched_time_2 = "09:30:{}"
+    #sched_time_1 = "09:29:{}"
+    #sched_time_2 = "09:30:{}"
     ##schedule the task for first hour
     # Booking any court in advance
     schedule.every().day.at(sched_time_1.format("00")).do(login)
