@@ -212,7 +212,7 @@ def log(msg):
 
 def click_appt_tab():
     #TODO: refreash the page before clicking the tab since sometimes the tab is not clickable, e.g. hit the CAPTCH
-    driver.navigate().refresh();
+    driver.refresh()
     #This is to avoid some issues when booking the second hour of the court
     logger.info("Clicking appointment tab")
     appt_field = driver.find_element(By.ID, "tabA9")
