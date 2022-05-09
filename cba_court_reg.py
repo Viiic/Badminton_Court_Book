@@ -286,7 +286,7 @@ else:
     get_court_list_screenshot()
     exit()
 
-wait_time = schedule.idle_seconds() + 60
+wait_time = schedule.idle_seconds() + 240
 logger.info("wait time: %d" % wait_time)
 i = 0
 logger.info("Starting scheduled task")
